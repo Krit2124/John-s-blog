@@ -2,6 +2,14 @@ const express = require('express')
 const app = express()
 app.set('view engine', "hbs")
 
+const TelegramBot = require('node-telegram-bot-api');
+
+const token = '6978880052:AAGVwZBs_JeCSkiGRsVAsA7hB5bhFLN3Z7U';
+
+const bot = new TelegramBot(token, {polling: true});
+
+let adminId = 845252189
+
 var path = require('path')
 const { log } = require('console')
 app.use(express.static(path.join(__dirname, 'public')))
@@ -96,13 +104,15 @@ app.post("/blogs-create", urlencoder, function(req, res) {
     let createdAt = new Date()
     let updatedAt = createdAt
 
-    Posts.create({header:header, tag:tag, text:text, createdAt:createdAt, updatedAt:updatedAt}).then(() => {
+    Posts.create({header:header, tag:tag, text:text, createdAt:createdAt, updatedAt:updatedAt}).then((createdPost) => {
+        let message = "Создан пост.\nЗаголовок: " + createdPost.header + ".\nId: " + createdPost.id
+        bot.sendMessage(adminId, message);
         res.redirect("/blogs")
     })
 })
 
 app.get("/blogs-update/:id", function(req, res) {
-    const postId = req.params.id
+    let postId = req.params.id
     Posts.findOne({where: {id: postId}}).then((data) => {
         res.render("blogs-update.hbs", {post: data})
     })
@@ -116,14 +126,22 @@ app.post("/blogs-update/:id", urlencoder, function(req, res) {
     let updatedAt = new Date()
 
     Posts.update({header:header, tag:tag, text:text, updatedAt:updatedAt}, {where: {id:id}}).then(() => {
+        let message = "Отредактирован пост.\nНовый заголовок: " + header + ".\nId: " + id
+        bot.sendMessage(adminId, message);
         res.redirect("/blogs")
     })
 })
 
 app.get("/blogs-delete/:id", function(req, res) {
-    const postId = req.params.id
-    Posts.destroy({where: {id: postId}}).then(() => {
-        res.redirect("/blogs")
+    let postId = req.params.id
+
+    Posts.findOne({ where: { id: postId } }).then((post) => {
+        let header = post.header;
+        Posts.destroy({where: {id: postId}}).then(() => {
+            let message = "Удалён пост.\nЗаголовок: " + header + ".\nId: " + postId
+            bot.sendMessage(adminId, message);
+            res.redirect("/blogs")
+        })
     })
 })
 
